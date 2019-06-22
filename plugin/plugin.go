@@ -60,7 +60,7 @@ import (
 	descriptor "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"github.com/gogo/protobuf/protoc-gen-gogo/generator"
 	"github.com/gogo/protobuf/vanity"
-	"github.com/mwitkow/go-proto-validators"
+	validator "github.com/mwitkow/go-proto-validators"
 )
 
 type plugin struct {
@@ -70,6 +70,7 @@ type plugin struct {
 	fmtPkg        generator.Single
 	protoPkg      generator.Single
 	validatorPkg  generator.Single
+	strconvPkg    generator.Single
 	useGogoImport bool
 }
 
@@ -93,6 +94,7 @@ func (p *plugin) Generate(file *generator.FileDescriptor) {
 	p.regexPkg = p.NewImport("regexp")
 	p.fmtPkg = p.NewImport("fmt")
 	p.validatorPkg = p.NewImport("github.com/mwitkow/go-proto-validators")
+	p.strconvPkg = p.NewImport("strconv")
 
 	for _, msg := range file.Messages() {
 		if msg.DescriptorProto.GetOptions().GetMapEntry() {
@@ -360,7 +362,7 @@ func (p *plugin) generateEnumValidator(
 	fv *validator.FieldValidator) {
 	if fv.GetIsInEnum() {
 		enum := p.ObjectNamed(field.GetTypeName()).(*generator.EnumDescriptor)
-		p.P(`if _, ok := `, enum.GetName(), "_name[int32(", variableName, ")]; !ok {")
+		p.P(`if `, variableName, `.String() == `, p.strconvPkg.Use(), `.Itoa(int(`, variableName, `)) {`)
 		p.In()
 		p.generateErrorString(variableName, fieldName, fmt.Sprintf("be a valid %s field", enum.GetName()), fv)
 		p.Out()
